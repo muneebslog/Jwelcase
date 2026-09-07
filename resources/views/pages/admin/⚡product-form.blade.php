@@ -4,7 +4,6 @@ use App\Enums\StockStatus;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductOption;
-use App\Models\ProductOptionValue;
 use App\Models\ProductVariant;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
@@ -45,6 +44,9 @@ new #[Layout('layouts.app')] class extends Component {
     /** @var array<int, \Livewire\Features\SupportFileUploads\TemporaryUploadedFile> */
     public array $uploads = [];
 
+    /** @var array<int, string> */
+    public array $pendingImagePaths = [];
+
     public function mount(?Product $product = null): void
     {
         if ($product?->exists) {
@@ -79,6 +81,51 @@ new #[Layout('layouts.app')] class extends Component {
                 ['name' => 'Size', 'values' => '6, 7, 8'],
             ];
         }
+    }
+
+    public function updatedUploads(): void
+    {
+        if ($this->uploads === []) {
+            return;
+        }
+
+        $this->validate([
+            'uploads.*' => ['required', 'image', 'max:5120'],
+        ]);
+
+        foreach ($this->uploads as $upload) {
+            $this->pendingImagePaths[] = $upload->store('products', 'public');
+        }
+
+        $this->uploads = [];
+    }
+
+    public function removePendingImage(int $index): void
+    {
+        if (! isset($this->pendingImagePaths[$index])) {
+            return;
+        }
+
+        \Illuminate\Support\Facades\Storage::disk('public')->delete($this->pendingImagePaths[$index]);
+        unset($this->pendingImagePaths[$index]);
+        $this->pendingImagePaths = array_values($this->pendingImagePaths);
+    }
+
+    public function removeSavedImage(int $imageId): void
+    {
+        if (! $this->product) {
+            return;
+        }
+
+        $image = $this->product->images()->whereKey($imageId)->first();
+
+        if (! $image) {
+            return;
+        }
+
+        \Illuminate\Support\Facades\Storage::disk('public')->delete($image->path);
+        $image->delete();
+        $this->product->load('images');
     }
 
     public function updatedName(string $value): void
@@ -172,7 +219,8 @@ new #[Layout('layouts.app')] class extends Component {
             'variants.*.compare_at_price' => ['nullable', 'integer', 'min:0'],
             'variants.*.stock_status' => ['required', 'in:in_stock,made_to_order,out_of_stock'],
             'variants.*.is_default' => ['boolean'],
-            'uploads.*' => ['nullable', 'image', 'max:5120'],
+            'pendingImagePaths' => ['array'],
+            'pendingImagePaths.*' => ['string'],
         ]);
 
         DB::transaction(function () use ($validated): void {
@@ -255,8 +303,7 @@ new #[Layout('layouts.app')] class extends Component {
                 $product->variants()->first()?->update(['is_default' => true]);
             }
 
-            foreach ($this->uploads as $index => $upload) {
-                $path = $upload->store('products', 'public');
+            foreach ($this->pendingImagePaths as $index => $path) {
                 $product->images()->create([
                     'path' => $path,
                     'alt' => $product->name,
@@ -264,7 +311,8 @@ new #[Layout('layouts.app')] class extends Component {
                 ]);
             }
 
-            $this->product = $product->fresh();
+            $this->pendingImagePaths = [];
+            $this->product = $product->fresh(['images', 'options.values', 'variants.optionValues']);
         });
 
         Flux::toast(variant: 'success', text: 'Product saved.');
@@ -368,15 +416,26 @@ new #[Layout('layouts.app')] class extends Component {
 
         <div class="space-y-3">
             <flux:heading size="lg">Images</flux:heading>
-            @if ($this->product)
-                <div class="grid grid-cols-4 gap-3">
+            <div class="grid grid-cols-4 gap-3">
+                @if ($this->product)
                     @foreach ($this->product->images as $image)
-                        <img src="{{ $image->url() }}" alt="" class="aspect-square rounded object-cover">
+                        <div class="relative" wire:key="saved-image-{{ $image->id }}">
+                            <img src="{{ $image->url() }}" alt="" class="aspect-square rounded object-cover">
+                            <button type="button" wire:click="removeSavedImage({{ $image->id }})" class="absolute top-1 right-1 rounded bg-black/70 px-2 py-0.5 text-xs text-white">Remove</button>
+                        </div>
                     @endforeach
-                </div>
-            @endif
-            <input type="file" wire:model="uploads" multiple accept="image/*" class="block w-full text-sm">
+                @endif
+                @foreach ($pendingImagePaths as $index => $path)
+                    <div class="relative" wire:key="pending-image-{{ $index }}">
+                        <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($path) }}" alt="" class="aspect-square rounded object-cover">
+                        <button type="button" wire:click="removePendingImage({{ $index }})" class="absolute top-1 right-1 rounded bg-black/70 px-2 py-0.5 text-xs text-white">Remove</button>
+                    </div>
+                @endforeach
+            </div>
+            <input type="file" wire:model="uploads" multiple accept="image/jpeg,image/png,image/webp,image/gif" class="block w-full text-sm">
             <div wire:loading wire:target="uploads" class="text-sm text-zinc-500">Uploading…</div>
+            @error('uploads.*') <p class="text-sm text-red-500">{{ $message }}</p> @enderror
+            @error('uploads') <p class="text-sm text-red-500">{{ $message }}</p> @enderror
         </div>
 
         <div class="grid gap-4 md:grid-cols-2">

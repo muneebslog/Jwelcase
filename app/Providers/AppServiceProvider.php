@@ -16,6 +16,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->configureWritableTempDirectory();
         $this->app->singleton(Cart::class);
     }
 
@@ -25,6 +26,32 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+    }
+
+    /**
+     * Point PHP temporary files at a project-owned directory.
+     *
+     * Livewire TemporaryUploadedFile calls tmpfile(); on some Windows setups
+     * the system temp directory is not writable by the PHP process, which
+     * makes uploads fail with stream_get_meta_data(false).
+     */
+    protected function configureWritableTempDirectory(): void
+    {
+        $directory = storage_path('framework/tmp');
+
+        if (! is_dir($directory)) {
+            mkdir($directory, 0775, true);
+        }
+
+        putenv('TMP='.$directory);
+        putenv('TEMP='.$directory);
+        putenv('TMPDIR='.$directory);
+        $_ENV['TMP'] = $directory;
+        $_ENV['TEMP'] = $directory;
+        $_ENV['TMPDIR'] = $directory;
+        $_SERVER['TMP'] = $directory;
+        $_SERVER['TEMP'] = $directory;
+        $_SERVER['TMPDIR'] = $directory;
     }
 
     /**
