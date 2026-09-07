@@ -1,0 +1,140 @@
+@import 'tailwindcss';
+@import '../../vendor/livewire/flux/dist/flux.css';
+
+@source '../views';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';
+@source '../../vendor/livewire/flux/stubs/**/*.blade.php';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-display: 'Cormorant Garamond', ui-serif, Georgia, serif;
+    --font-storefront: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+
+    --color-zinc-50: #fafafa;
+    --color-zinc-100: #f5f5f5;
+    --color-zinc-200: #e5e5e5;
+    --color-zinc-300: #d4d4d4;
+    --color-zinc-400: #a3a3a3;
+    --color-zinc-500: #737373;
+    --color-zinc-600: #525252;
+    --color-zinc-700: #404040;
+    --color-zinc-800: #262626;
+    --color-zinc-900: #171717;
+    --color-zinc-950: #0a0a0a;
+
+    --color-noir: #0b0b0b;
+    --color-noir-surface: #141414;
+    --color-noir-elevated: #1c1c1c;
+    --color-gold: #c6a75e;
+    --color-gold-soft: #e8d5a3;
+    --color-ivory: #f3eee4;
+    --color-muted: #9a9590;
+    --color-line: #2a2a2a;
+
+    --color-accent: var(--color-neutral-800);
+    --color-accent-content: var(--color-neutral-800);
+    --color-accent-foreground: var(--color-white);
+}
+
+@layer theme {
+    .dark {
+        --color-accent: var(--color-white);
+        --color-accent-content: var(--color-white);
+        --color-accent-foreground: var(--color-neutral-800);
+    }
+}
+
+@layer base {
+
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-gray-200, currentColor);
+    }
+}
+
+[data-flux-field]:not(ui-radio, ui-checkbox) {
+    @apply grid gap-2;
+}
+
+[data-flux-label] {
+    @apply  !mb-0 !leading-tight;
+}
+
+input:focus[data-flux-control],
+textarea:focus[data-flux-control],
+select:focus[data-flux-control] {
+    @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
+}
+
+/* Storefront — Noir Gold */
+.storefront {
+    font-family: var(--font-storefront);
+    background-color: var(--color-noir);
+    color: var(--color-ivory);
+}
+
+.storefront .font-display {
+    font-family: var(--font-display);
+}
+
+@keyframes storefront-fade-up {
+    from {
+        opacity: 0;
+        transform: translateY(1.25rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.storefront-reveal {
+    animation: storefront-fade-up 0.8s ease-out both;
+}
+
+.storefront-nav-link {
+    position: relative;
+    color: var(--color-muted);
+    transition: color 0.25s ease;
+}
+
+.storefront-nav-link::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -0.2rem;
+    width: 100%;
+    height: 1px;
+    background: var(--color-gold);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+}
+
+.storefront-nav-link:hover,
+.storefront-nav-link[aria-current='page'] {
+    color: var(--color-gold-soft);
+}
+
+.storefront-nav-link:hover::after,
+.storefront-nav-link[aria-current='page']::after {
+    transform: scaleX(1);
+}
+
+.storefront-image-zoom {
+    overflow: hidden;
+}
+
+.storefront-image-zoom img {
+    transition: transform 0.7s ease;
+}
+
+.storefront-image-zoom:hover img {
+    transform: scale(1.05);
+}
